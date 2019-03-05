@@ -4,11 +4,7 @@ services:
   sonarqube:
     image: sonarqube
     ports:
-      - "9000:80"
-    environment: 
-      - sonar.jdbc.url=somevalue
-      - sonar.jdbc.username=someusername
-      - sonar.jdbc.password=somepassword
+      - "9000:9000"
     volumes: 
       - sonarqube_conf:/opt/sonarqube/conf
       - sonarqube_data:/opt/sonarqube/data
