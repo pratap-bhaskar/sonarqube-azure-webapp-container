@@ -1,0 +1,159 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "storageAccountName": {
+            "type": "string",
+            "metadata": {
+                "description": "name of the storage account where file share is created."
+            }
+        },
+        "postgresServerName":{
+            "type": "string",
+            "defaultValue": "sonar",
+            "metadata": {
+                "description":"name of the server"
+            }
+        },
+        "postgresDbName":{
+            "type": "string",
+            "defaultValue": "sonar",
+            "metadata": {
+                "description":"name of the database"
+            }
+        },
+        "postgresUser":{
+            "type": "string",
+            "defaultValue": "sonar",
+            "metadata": {
+                "description":"name of the user"
+            }
+        },
+        "postgresPassword":{
+            "type": "securestring"
+            
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "name": "sonarqubecontainer",
+            "type":"Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2018-10-01",
+            "location":"Southeast Asia",
+            "properties":{
+                "containers":[
+                    {
+                        "name": "sonarqube",
+                        "properties": {
+                            "image": "sonarqube:latest",
+                            "ports":[
+                                { 
+                                    "port": 9000,
+                                    "protocol":"TCP"
+                                }
+                            ],
+                            "environmentVariables":[
+                                {
+                                    "name": "SONARQUBE_JDBC_URL",
+                                    "value": "[concat('jdbc:postgresql://', parameters('postgresServerName'), '.postgres.database.azure.com:5432/', parameters('postgresDbName'), '?user=', parameters('postgresUser'), '@', parameters('postgresServerName'), '&password=', parameters('postgresPassword'))]"
+                                },
+                                {
+                                    "name": "SONARQUBE_JDBC_USERNAME",
+                                    "value": "[parameters('postgresUser')]"
+                                },
+                                {
+                                    "name": "SONARQUBE_JDBC_PASSWORD",
+                                    "secureValue": "[parameters('postgresPassword')]"
+                                }
+                            ],
+                            "volumeMounts":[
+                                {
+                                    "name": "sonarqube-conf",
+                                    "mountPath": "/opt/sonarqube/conf"
+                                },
+                                {
+                                    "name": "sonarqube-data",
+                                    "mountPath": "/opt/sonarqube/data"
+                                },
+                                {
+                                    "name": "sonarqube-logs",
+                                    "mountPath": "/opt/sonarqube/logs"
+                                },
+                                {
+                                    "name": "sonarqube-extensions",
+                                    "mountPath": "/opt/sonarqube/extensions"
+                                }
+                            ],
+                            "resources":{
+                                "requests":{
+                                    "memoryInGB": 2,
+                                    "cpu":1
+                                }
+                            }
+                        }
+                    }
+                ],
+                "ipAddress":{
+                    "dnsNameLabel": "sonarqube-acig",
+                    "ports":[
+                        {
+                            "port":9000,
+                            "protocol":"TCP"
+                        }
+                    ],
+                    "type": "Public"
+                },
+                "osType":"Linux",
+                "volumes":[
+                    {
+                        "name": "sonarqube-conf",
+                        "azureFile":{
+                            "shareName": "sonarqubeconf",
+                            "storageAccountName": "[parameters('storageAccountName')]",
+                            "storageAccountKey": "[listKeys(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')),'2017-10-01').keys[0].value]",
+                            "readOnly":false
+                        }
+                    },
+                    {
+                        "name": "sonarqube-data",
+                        "azureFile":{
+                            "shareName": "sonarqubedata",
+                            "storageAccountName": "[parameters('storageAccountName')]",
+                            "storageAccountKey": "[listKeys(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')),'2017-10-01').keys[0].value]",
+                            "readOnly":false
+                        }
+                    },
+                    {
+                        "name": "sonarqube-logs",
+                        "azureFile":{
+                            "shareName": "sonarqubelogs",
+                            "storageAccountName": "[parameters('storageAccountName')]",
+                            "storageAccountKey": "[listKeys(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')),'2017-10-01').keys[0].value]",
+                            "readOnly":false
+                        }
+                    },
+                    {
+                        "name": "sonarqube-extensions",
+                        "azureFile":{
+                            "shareName": "sonarqubeextensions",
+                            "storageAccountName": "[parameters('storageAccountName')]",
+                            "storageAccountKey": "[listKeys(resourceId(resourceGroup().name, 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')),'2017-10-01').keys[0].value]",
+                            "readOnly":false
+                        }
+                    },
+                    {
+                        "name": "postgresdata",
+                        "emptyDir":{}
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {
+        "containerIPv4Address": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups/', 'sonarqubecontainer')).ipAddress.ip]"
+        }
+    }
+}
